@@ -37,7 +37,7 @@ Colors automatically adjust:
 
 1. **Clone or download this script:**
    ```bash
-   curl -o ~/claude-subscription-usage.js https://raw.githubusercontent.com/YOUR_USERNAME/claude-subscription-usage/main/claude-subscription-usage.js
+   curl -o ~/claude-subscription-usage.js https://raw.githubusercontent.com/shane-nzer/claude-subscription-usage/main/claude-subscription-usage.js
    chmod +x ~/claude-subscription-usage.js
    ```
 
