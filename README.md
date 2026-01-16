@@ -1,6 +1,6 @@
 # Claude Subscription Usage
 
-Display your Claude Pro/Max subscription usage in your terminal status line with real-time tracking, progress bars, and color-coded warnings.
+Display your Claude Pro/Max subscription usage in your terminal status line (works great with [ccstatusline](https://github.com/sirmalloc/ccstatusline)) with real-time tracking, progress bars, and color-coded warnings.
 
 ## Preview
 
@@ -49,7 +49,7 @@ chmod +x ~/claude-subscription-usage.js
 ~/claude-subscription-usage.js --json
 ```
 
-## Integration with ccstatusline
+## Integration with [ccstatusline](https://github.com/sirmalloc/ccstatusline)
 
 1. Run `npx ccstatusline@latest` (or `bunx ccstatusline@latest`)
 2. Add a **Custom Command** widget
