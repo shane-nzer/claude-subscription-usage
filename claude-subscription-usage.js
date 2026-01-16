@@ -19,6 +19,7 @@ Options:
   --both          Show both (default)
   --no-bars       Hide progress bars
   --no-cache      Bypass local cache and force API fetch
+  --json          Output raw data in JSON format
   --24h           Use 24-hour time format
   --text-color=C  Set text color (default, white, light-grey, mid-grey)
   --debug         Enable verbose error logging
@@ -186,6 +187,11 @@ async function main() {
       } catch (e) {
         if (debug) console.error('\x1b[33mFailed to write cache:\x1b[0m', e.message);
       }
+    }
+
+    if (args.includes('--json')) {
+      console.log(JSON.stringify(usage, null, 2));
+      return;
     }
 
     // Extract mode (--session, --week, or --both)

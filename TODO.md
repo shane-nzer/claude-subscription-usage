@@ -10,5 +10,5 @@
 - [x] **Performance & API Courtesy**
     - [x] Implement local caching (e.g., 1-5 minutes) to reduce API calls and improve status line responsiveness.
 
-- [ ] **Integration**
-    - [ ] Add `--json` flag to output raw data for integration with other tools (Waybar, Polybar, etc.).
+- [x] **Integration**
+    - [x] Add `--json` flag to output raw data for integration with other tools (Waybar, Polybar, etc.).
