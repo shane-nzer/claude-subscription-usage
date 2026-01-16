@@ -7,8 +7,8 @@
 - [x] **Platform Support**
     - [x] Add `CLAUDE_OAUTH_TOKEN` environment variable support to allow usage on Linux/Windows and simplify testing.
 
-- [ ] **Performance & API Courtesy**
-    - [ ] Implement local caching (e.g., 1-5 minutes) to reduce API calls and improve status line responsiveness.
+- [x] **Performance & API Courtesy**
+    - [x] Implement local caching (e.g., 1-5 minutes) to reduce API calls and improve status line responsiveness.
 
 - [ ] **Integration**
     - [ ] Add `--json` flag to output raw data for integration with other tools (Waybar, Polybar, etc.).
