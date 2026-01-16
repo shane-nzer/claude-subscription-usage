@@ -79,7 +79,7 @@ function createProgressBar(utilization, barLength = 10) {
 }
 
 function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
-  if (!resetTime) return 'N/A';
+  if (!resetTime) return '--:--';
 
   const reset = new Date(resetTime);
   const now = new Date();
