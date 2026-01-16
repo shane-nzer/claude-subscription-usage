@@ -9,9 +9,11 @@ Perfect for integration with [ccstatusline](https://github.com/sirmalloc/ccstatu
 - 📊 **Real-time Usage Tracking** - Shows current session and weekly subscription usage percentages
 - ⏰ **Absolute Reset Times** - Displays the exact time when your usage limits will reset
 - 🎨 **Dynamic Color Coding** - Automatically changes color based on usage (green → yellow → red)
+- ⚡ **Intelligent Caching** - Caches API responses for 5 minutes to reduce API calls and improve speed
+- 🛠️ **JSON Output** - Export raw data for integration with custom tools and dashboards
 - ⚙️ **Highly Configurable** - Customize labels, colors, time format (12h/24h), and display modes
-- 🚀 **Fast & Lightweight** - Sub-second API calls, minimal dependencies
-- 🔐 **Secure** - Uses your existing Claude Code credentials from macOS Keychain
+- 🚀 **Fast & Lightweight** - Sub-second execution using local cache
+- 🔐 **Secure** - Uses your existing Claude Code credentials from macOS Keychain (or env var)
 
 ## Preview
 
@@ -28,10 +30,10 @@ Colors automatically adjust:
 
 ### Prerequisites
 
-- macOS (uses macOS Keychain for credentials)
 - Node.js installed
 - Active Claude Pro or Max subscription
-- Authenticated with Claude Code CLI
+- **macOS**: Authenticated with Claude Code CLI (uses Keychain)
+- **Linux/Windows**: Manually supplied OAuth token (see Advanced Usage)
 
 ### Setup
 
@@ -53,6 +55,9 @@ Colors automatically adjust:
 ### Basic Usage
 
 ```bash
+# Show help and all options
+~/claude-subscription-usage.js --help
+
 # Show both session and week (default)
 ~/claude-subscription-usage.js
 
@@ -61,6 +66,9 @@ Colors automatically adjust:
 
 # Show only week
 ~/claude-subscription-usage.js --week
+
+# Debug mode (verbose error logging)
+~/claude-subscription-usage.js --debug
 ```
 
 ### Time Format
@@ -105,6 +113,50 @@ By default, the script uses `light-grey` for labels and times. You can customize
 
 Available colors: `default`, `white`, `light-grey`, `mid-grey`
 
+## Advanced Usage
+
+### JSON Output
+
+For integration with other tools (like Waybar, Polybar, or custom scripts), you can output the raw data in JSON format:
+
+```bash
+~/claude-subscription-usage.js --json
+```
+
+Output:
+```json
+{
+  "five_hour": { "utilization": 45.2, "resets_at": "..." },
+  "seven_day": { "utilization": 23.0, "resets_at": "..." }
+  ...
+}
+```
+
+### Caching
+
+To reduce load on the Anthropic API and improve performance, the script caches the API response locally for **5 minutes**.
+
+- **Standard run:** Uses cached data if it's less than 5 minutes old.
+- **Force refresh:** Use `--no-cache` to force a new API call.
+
+```bash
+~/claude-subscription-usage.js --no-cache
+```
+
+### Environment Variables (Linux/Windows Support)
+
+If you are not on macOS or want to manually supply the token, you can use the `CLAUDE_OAUTH_TOKEN` environment variable.
+
+1.  **Get your token:**
+    - If you have `claude` installed on macOS, run: `security find-generic-password -s "Claude Code-credentials" -w`
+    - Or find it in your local configuration files if stored differently.
+
+2.  **Run with token:**
+    ```bash
+    export CLAUDE_OAUTH_TOKEN="your-token-here"
+    ~/claude-subscription-usage.js
+    ```
+
 ## Integration with ccstatusline
 
 [ccstatusline](https://github.com/sirmalloc/ccstatusline) is a beautiful status line formatter for Claude Code. Here's how to add subscription usage to it:
@@ -139,10 +191,10 @@ Available colors: `default`, `white`, `light-grey`, `mid-grey`
 
 ## How It Works
 
-1. **Retrieves OAuth Token**: Reads your Claude Code credentials from macOS Keychain
-2. **Calls Anthropic API**: Makes a request to `https://api.anthropic.com/api/oauth/usage`
-3. **Formats Output**: Displays usage percentages with time-until-reset and dynamic colors
-4. **Updates Automatically**: Your status line tool calls the script on each refresh
+1. **Retrieves OAuth Token**: Checks `CLAUDE_OAUTH_TOKEN` env var, then tries macOS Keychain.
+2. **Checks Cache**: Returns local data if < 5 mins old (unless `--no-cache` is used).
+3. **Calls Anthropic API**: If needed, requests `https://api.anthropic.com/api/oauth/usage`.
+4. **Formats Output**: Displays usage percentages with time-until-reset and dynamic colors.
 
 ## API Response
 
@@ -175,16 +227,15 @@ The percentage values change color based on usage:
 
 ### "N/A" Output
 
-If you see `N/A`, check:
-1. You're authenticated with Claude Code (`claude` command works)
-2. You have an active Pro/Max subscription
-3. Claude Code credentials are in Keychain: `security find-generic-password -s "Claude Code-credentials"`
+If you see `N/A`, try running with the debug flag to see the actual error:
+```bash
+~/claude-subscription-usage.js --debug
+```
 
-### Script Hangs or Times Out
-
-The script has a 3-second timeout for the API call. If it's timing out:
-- Check your internet connection
-- The Anthropic API might be experiencing issues
+Common causes:
+1. Not authenticated with Claude Code.
+2. Expired or invalid token.
+3. Network issues.
 
 ### Colors Not Showing in ccstatusline
 
@@ -192,9 +243,8 @@ Make sure you enabled "preserve colors" (press `p` in the Custom Command editor)
 
 ## Platform Compatibility
 
-Currently supports **macOS only** because it uses the macOS Keychain to retrieve credentials.
-
-Contributions welcome for Linux/Windows support! See the "Contributing" section.
+- **macOS**: Native support (automatically pulls credentials from Keychain).
+- **Linux / Windows**: Supported via `CLAUDE_OAUTH_TOKEN` environment variable.
 
 ## Related Tools
 
@@ -206,11 +256,8 @@ Contributions welcome for Linux/Windows support! See the "Contributing" section.
 
 Contributions are welcome! Areas for improvement:
 
-- [ ] Linux support (different credential storage)
-- [ ] Windows support (different credential storage)
 - [ ] Configuration file support
 - [ ] More color themes
-- [ ] Verbose/debug mode
 
 ## License
 
