@@ -33,6 +33,12 @@ const TEXT_COLORS = {
   'dark-grey': '\x1b[90m'    // Alias for mid-grey
 };
 
+function createProgressBar(utilization, barLength = 10) {
+  const filled = Math.round((utilization / 100) * barLength);
+  const empty = barLength - filled;
+  return '█'.repeat(filled) + '░'.repeat(empty);
+}
+
 function formatTimeRemaining(resetTime) {
   if (!resetTime) return 'N/A';
 
@@ -84,7 +90,7 @@ async function fetchUsage(token) {
     });
 
     req.on('error', reject);
-    req.setTimeout(3000, () => {
+    req.setTimeout(10000, () => {
       req.destroy();
       reject(new Error('Timeout'));
     });
@@ -114,6 +120,9 @@ async function main() {
     const textColorName = textColorArg ? textColorArg.split('=')[1] : 'light-grey';
     const textColor = TEXT_COLORS[textColorName] || TEXT_COLORS['light-grey'];
 
+    // Check for progress bar flag (default: true)
+    const showBars = !args.includes('--no-bars');
+
     const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
     const sessionReset = formatTimeRemaining(usage.five_hour?.resets_at);
 
@@ -124,12 +133,14 @@ async function main() {
       // Get custom label (first non-flag arg)
       const label = args.find(arg => !arg.startsWith('--')) || 'Session';
       const sessionColor = getColor(parseFloat(session));
-      console.log(`${textColor}${label}: ${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
+      const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
+      console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
     } else if (mode === '--week') {
       // Get custom label (first non-flag arg)
       const label = args.find(arg => !arg.startsWith('--')) || 'Week';
       const weekColor = getColor(parseFloat(week));
-      console.log(`${textColor}${label}: ${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+      const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
+      console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
     } else {
       // Show both - get custom labels from non-flag arguments
       const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
@@ -137,7 +148,9 @@ async function main() {
       const weekLabel = nonFlagArgs[1] || 'Week';
       const sessionColor = getColor(parseFloat(session));
       const weekColor = getColor(parseFloat(week));
-      console.log(`${textColor}${sessionLabel}: ${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+      const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
+      const weekBar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
+      console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
     }
   } catch (error) {
     console.log('N/A');
