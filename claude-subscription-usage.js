@@ -2,12 +2,6 @@
 
 const { execSync } = require('child_process');
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const CACHE_FILE = path.join(os.tmpdir(), 'claude-usage-cache.json');
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function printHelp() {
   console.log(`
@@ -18,7 +12,6 @@ Options:
   --week          Show only weekly usage
   --both          Show both (default)
   --no-bars       Hide progress bars
-  --no-cache      Bypass local cache and force API fetch
   --json          Output raw data in JSON format
   --24h           Use 24-hour time format
   --text-color=C  Set text color (default, white, light-grey, mid-grey)
@@ -157,37 +150,7 @@ async function main() {
       return;
     }
 
-    let usage;
-    const skipCache = args.includes('--no-cache');
-
-    if (!skipCache && fs.existsSync(CACHE_FILE)) {
-      try {
-        const cacheData = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-        const age = Date.now() - cacheData.timestamp;
-
-        if (age < CACHE_TTL) {
-          usage = cacheData.data;
-          if (debug) {
-            console.error(`\x1b[32mUsing cached data (${Math.round(age / 1000)}s old)\x1b[0m`);
-          }
-        }
-      } catch (e) {
-        if (debug) console.error('\x1b[33mFailed to read cache:\x1b[0m', e.message);
-      }
-    }
-
-    if (!usage) {
-      if (debug && !skipCache) console.error('\x1b[33mCache miss or expired, fetching from API...\x1b[0m');
-      usage = await fetchUsage(token);
-      try {
-        fs.writeFileSync(CACHE_FILE, JSON.stringify({
-          timestamp: Date.now(),
-          data: usage
-        }));
-      } catch (e) {
-        if (debug) console.error('\x1b[33mFailed to write cache:\x1b[0m', e.message);
-      }
-    }
+    const usage = await fetchUsage(token);
 
     if (args.includes('--json')) {
       console.log(JSON.stringify(usage, null, 2));
