@@ -3,7 +3,28 @@
 const { execSync } = require('child_process');
 const https = require('https');
 
-async function getCredentials() {
+function printHelp() {
+  console.log(`
+Usage: claude-subscription-usage.js [options] [label1] [label2]
+
+Options:
+  --session       Show only session usage
+  --week          Show only weekly usage
+  --both          Show both (default)
+  --no-bars       Hide progress bars
+  --24h           Use 24-hour time format
+  --text-color=C  Set text color (default, white, light-grey, mid-grey)
+  --debug         Enable verbose error logging
+  --help, -h      Show this help message
+
+Examples:
+  claude-subscription-usage.js
+  claude-subscription-usage.js --session "Current"
+  claude-subscription-usage.js --text-color=white --no-bars
+`);
+}
+
+async function getCredentials(debug = false) {
   try {
     const output = execSync('security find-generic-password -s "Claude Code-credentials" -w', {
       encoding: 'utf8',
@@ -13,6 +34,9 @@ async function getCredentials() {
     const credentials = JSON.parse(output.trim());
     return credentials.claudeAiOauth?.accessToken;
   } catch (error) {
+    if (debug) {
+      console.error('\x1b[31mError fetching credentials:\x1b[0m', error.message);
+    }
     return null;
   }
 }
@@ -102,16 +126,23 @@ async function fetchUsage(token) {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+
+  if (args.includes('--help') || args.includes('-h')) {
+    printHelp();
+    return;
+  }
+
+  const debug = args.includes('--debug');
+
   try {
-    const token = await getCredentials();
+    const token = await getCredentials(debug);
     if (!token) {
       console.log('N/A');
       return;
     }
 
     const usage = await fetchUsage(token);
-
-    const args = process.argv.slice(2);
 
     // Extract mode (--session, --week, or --both)
     const modeArg = args.find(arg => arg === '--session' || arg === '--week' || arg === '--both');
@@ -158,6 +189,9 @@ async function main() {
       console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
     }
   } catch (error) {
+    if (debug) {
+      console.error('\x1b[31mError:\x1b[0m', error.message);
+    }
     console.log('N/A');
   }
 }
