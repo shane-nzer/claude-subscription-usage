@@ -25,6 +25,13 @@ Examples:
 }
 
 async function getCredentials(debug = false) {
+  if (process.env.CLAUDE_OAUTH_TOKEN) {
+    if (debug) {
+      console.error('\x1b[32mUsing token from environment variable\x1b[0m');
+    }
+    return process.env.CLAUDE_OAUTH_TOKEN;
+  }
+
   try {
     const output = execSync('security find-generic-password -s "Claude Code-credentials" -w', {
       encoding: 'utf8',
