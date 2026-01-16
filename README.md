@@ -7,16 +7,16 @@ Perfect for integration with [ccstatusline](https://github.com/sirmalloc/ccstatu
 ## Features
 
 - 📊 **Real-time Usage Tracking** - Shows current session and weekly subscription usage percentages
-- ⏰ **Reset Timers** - Displays time remaining until your usage limits reset
+- ⏰ **Absolute Reset Times** - Displays the exact time when your usage limits will reset
 - 🎨 **Dynamic Color Coding** - Automatically changes color based on usage (green → yellow → red)
-- ⚙️ **Highly Configurable** - Customize labels, colors, and display modes
+- ⚙️ **Highly Configurable** - Customize labels, colors, time format (12h/24h), and display modes
 - 🚀 **Fast & Lightweight** - Sub-second API calls, minimal dependencies
 - 🔐 **Secure** - Uses your existing Claude Code credentials from macOS Keychain
 
 ## Preview
 
 ```
-Current: 68.0% (1h 45m) | Week: 37.0% (17h 45m)
+Current: 68.0% (2:45pm) | Week: 37.0% (Wed 2:45pm)
 ```
 
 Colors automatically adjust:
@@ -46,7 +46,7 @@ Colors automatically adjust:
    ~/claude-subscription-usage.js
    ```
 
-   You should see output like: `Session: 45.2% (3h 15m) | Week: 23.0% (2d 4h)`
+   You should see output like: `Session: 45.2% (3:15pm) | Week: 23.0% (Fri 4:00pm)`
 
 ## Usage
 
@@ -61,6 +61,15 @@ Colors automatically adjust:
 
 # Show only week
 ~/claude-subscription-usage.js --week
+```
+
+### Time Format
+
+By default, times are shown in 12-hour format (e.g., `2:30pm`). You can switch to 24-hour format:
+
+```bash
+# Use 24-hour format
+~/claude-subscription-usage.js --24h
 ```
 
 ### Custom Labels
