@@ -9,10 +9,10 @@ Perfect for integration with [ccstatusline](https://github.com/sirmalloc/ccstatu
 - 📊 **Real-time Usage Tracking** - Shows current session and weekly subscription usage percentages
 - ⏰ **Absolute Reset Times** - Displays the exact time when your usage limits will reset
 - 🎨 **Dynamic Color Coding** - Automatically changes color based on usage (green → yellow → red)
-- ⚡ **Intelligent Caching** - Caches API responses for 5 minutes to reduce API calls and improve speed
+- 📊 **Progress Bars** - Visual block-style progress bars for at-a-glance usage monitoring
 - 🛠️ **JSON Output** - Export raw data for integration with custom tools and dashboards
 - ⚙️ **Highly Configurable** - Customize labels, colors, time format (12h/24h), and display modes
-- 🚀 **Fast & Lightweight** - Sub-second execution using local cache
+- 🚀 **Fast & Lightweight** - Sub-second API calls, minimal dependencies
 - 🔐 **Secure** - Uses your existing Claude Code credentials from macOS Keychain (or env var)
 
 ## Preview
@@ -132,17 +132,6 @@ Output:
 }
 ```
 
-### Caching
-
-To reduce load on the Anthropic API and improve performance, the script caches the API response locally for **5 minutes**.
-
-- **Standard run:** Uses cached data if it's less than 5 minutes old.
-- **Force refresh:** Use `--no-cache` to force a new API call.
-
-```bash
-~/claude-subscription-usage.js --no-cache
-```
-
 ### Environment Variables (Linux/Windows Support)
 
 If you are not on macOS or want to manually supply the token, you can use the `CLAUDE_OAUTH_TOKEN` environment variable.
@@ -192,9 +181,8 @@ If you are not on macOS or want to manually supply the token, you can use the `C
 ## How It Works
 
 1. **Retrieves OAuth Token**: Checks `CLAUDE_OAUTH_TOKEN` env var, then tries macOS Keychain.
-2. **Checks Cache**: Returns local data if < 5 mins old (unless `--no-cache` is used).
-3. **Calls Anthropic API**: If needed, requests `https://api.anthropic.com/api/oauth/usage`.
-4. **Formats Output**: Displays usage percentages with time-until-reset and dynamic colors.
+2. **Calls Anthropic API**: Requests `https://api.anthropic.com/api/oauth/usage`.
+3. **Formats Output**: Displays usage percentages with absolute reset times and dynamic colors.
 
 ## API Response
 
