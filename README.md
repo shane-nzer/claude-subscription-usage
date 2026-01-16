@@ -1,6 +1,6 @@
-# Claude Subscription Usage
+# Claude Subscription Usage (for Claude Code)
 
-Display your Claude Pro/Max subscription usage in your terminal status line (works great with [ccstatusline](https://github.com/sirmalloc/ccstatusline)) with real-time tracking, progress bars, and color-coded warnings.
+Display your Claude Pro/Max subscription usage in your terminal status line (works great with [ccstatusline](https://github.com/sirmalloc/ccstatusline)) with real-time tracking, progress bars, and color-coded warnings. Designed for Claude Code users.
 
 ## Preview
 
