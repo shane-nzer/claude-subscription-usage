@@ -39,25 +39,27 @@ function createProgressBar(utilization, barLength = 10) {
   return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-function formatTimeRemaining(resetTime) {
+function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
   if (!resetTime) return 'N/A';
 
-  const now = new Date();
   const reset = new Date(resetTime);
-  const diff = reset - now;
+  const now = new Date();
 
-  if (diff <= 0) return 'soon';
+  if (reset <= now) return 'soon';
 
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayStr = includeDay ? `${days[reset.getDay()]} ` : '';
 
-  if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return `${days}d ${remainingHours}h`;
+  let hours = reset.getHours();
+  const minutes = reset.getMinutes().toString().padStart(2, '0');
+
+  if (use24Hr) {
+    return `${dayStr}${hours.toString().padStart(2, '0')}:${minutes}`;
+  } else {
+    const period = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12 || 12;
+    return `${dayStr}${hours}:${minutes}${period}`;
   }
-
-  return `${hours}h ${minutes}m`;
 }
 
 async function fetchUsage(token) {
@@ -123,11 +125,14 @@ async function main() {
     // Check for progress bar flag (default: true)
     const showBars = !args.includes('--no-bars');
 
+    // Check for 24-hour format flag (default: false)
+    const use24Hr = args.includes('--24h');
+
     const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
-    const sessionReset = formatTimeRemaining(usage.five_hour?.resets_at);
+    const sessionReset = formatResetTime(usage.five_hour?.resets_at, use24Hr, false);
 
     const week = usage.seven_day?.utilization?.toFixed(1) || 'N/A';
-    const weekReset = formatTimeRemaining(usage.seven_day?.resets_at);
+    const weekReset = formatResetTime(usage.seven_day?.resets_at, use24Hr, true);
 
     if (mode === '--session') {
       // Get custom label (first non-flag arg)
