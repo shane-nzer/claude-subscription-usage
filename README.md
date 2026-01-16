@@ -16,7 +16,7 @@ Perfect for integration with [ccstatusline](https://github.com/sirmalloc/ccstatu
 ## Preview
 
 ```
-Current: 68.0% (2:45pm) | Week: 37.0% (Wed 2:45pm)
+Current: ███████░░░ 68.0% (2:45pm) | Week: ████░░░░░░ 37.0% (Wed 2:45pm)
 ```
 
 Colors automatically adjust:
@@ -46,7 +46,7 @@ Colors automatically adjust:
    ~/claude-subscription-usage.js
    ```
 
-   You should see output like: `Session: 45.2% (3:15pm) | Week: 23.0% (Fri 4:00pm)`
+   You should see output like: `Session: █████░░░░░ 45.2% (3:15pm) | Week: ██░░░░░░░░ 23.0% (Fri 4:00pm)`
 
 ## Usage
 
