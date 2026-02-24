@@ -66,9 +66,13 @@ const TEXT_COLORS = {
 };
 
 function createProgressBar(utilization, barLength = 10) {
-  const filled = Math.round((utilization / 100) * barLength);
-  const empty = barLength - filled;
-  return '█'.repeat(filled) + '░'.repeat(empty);
+  const eighths = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
+  const totalEighths = Math.round((utilization / 100) * barLength * 8);
+  const fullBlocks = Math.floor(totalEighths / 8);
+  const remainder = totalEighths % 8;
+  const partial = remainder > 0 ? eighths[remainder] : '';
+  const empty = barLength - fullBlocks - (partial ? 1 : 0);
+  return '|' + '█'.repeat(fullBlocks) + partial + ' '.repeat(empty) + '|';
 }
 
 function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
