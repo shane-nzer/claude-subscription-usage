@@ -5,7 +5,7 @@ Display your Claude Pro/Max subscription usage in your terminal status line (wor
 ## Preview
 
 ```
-Current: ███████░░░ 68.0% (2:45pm) | Week: ████░░░░░░ 37.0% (Wed 2:45pm)
+Current: |███████▌  | 68.0% (2:45pm) | Week: |████▍     | 37.0% (Wed 2:45pm)
 ```
 
 - **Green** (< 70%): You're good
