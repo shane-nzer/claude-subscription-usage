@@ -52,10 +52,14 @@ chmod +x ~/.local/bin/claude-subscription-usage.js
 ## Integration with [ccstatusline](https://github.com/sirmalloc/ccstatusline)
 
 1. Run `npx ccstatusline@latest` (or `bunx ccstatusline@latest`)
-2. Add a **Custom Command** widget
-3. Set command to: `~/.local/bin/claude-subscription-usage.js "Current" "Week"`
-4. Set timeout to: `5000`
-5. Enable "preserve colors"
+2. Add a **Custom Command** widget:
+   - Select **Edit Lines** from the main menu
+   - Choose the line you want to add the widget to
+   - Press `a` to append or `i` to insert a new item — this opens the item type picker
+   - Select **Custom** → **Custom Command**
+   - Set **command** to: `~/.local/bin/claude-subscription-usage.js "Current" "Week"`
+   - Set **timeout** to: `5000`
+   - Enable **preserve colors**
 
 ## Options
 
