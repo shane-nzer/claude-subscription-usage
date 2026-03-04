@@ -157,7 +157,7 @@ async function fetchUsage(token) {
   });
 }
 
-function renderUsage(usage, args) {
+function renderUsage(usage, args, cached = false) {
   const modeArg = args.find(arg => arg === '--session' || arg === '--week' || arg === '--both');
   const mode = modeArg || '--both';
 
@@ -167,6 +167,7 @@ function renderUsage(usage, args) {
 
   const showBars = !args.includes('--no-bars');
   const use24Hr = args.includes('--24h');
+  const stale = cached ? '~' : '';
 
   const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
   const sessionReset = formatResetTime(usage.five_hour?.resets_at, use24Hr, false);
@@ -178,12 +179,12 @@ function renderUsage(usage, args) {
     const label = args.find(arg => !arg.startsWith('--')) || 'Session';
     const sessionColor = getColor(parseFloat(session));
     const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
-    console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
+    console.log(`${textColor}${label}: ${bar}${sessionColor}${stale}${session}%${textColor} (${sessionReset})${RESET}`);
   } else if (mode === '--week') {
     const label = args.find(arg => !arg.startsWith('--')) || 'Week';
     const weekColor = getColor(parseFloat(week));
     const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-    console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+    console.log(`${textColor}${label}: ${bar}${weekColor}${stale}${week}%${textColor} (${weekReset})${RESET}`);
   } else {
     const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
     const sessionLabel = nonFlagArgs[0] || 'Session';
@@ -192,7 +193,7 @@ function renderUsage(usage, args) {
     const weekColor = getColor(parseFloat(week));
     const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
     const weekBar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-    console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+    console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${stale}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${stale}${week}%${textColor} (${weekReset})${RESET}`);
   }
 }
 
@@ -225,7 +226,7 @@ async function main() {
         if (args.includes('--json')) {
           console.log(JSON.stringify(cache.data, null, 2));
         } else {
-          renderUsage(cache.data, args);
+          renderUsage(cache.data, args, true);
         }
       } else {
         const secsLeft = Math.ceil((cache.retryUntil - Date.now()) / 1000);
@@ -254,7 +255,7 @@ async function main() {
       const cache = readCache();
       writeCache({ ...(cache || {}), retryUntil: Date.now() + retryAfter * 1000 });
       if (cache?.data) {
-        renderUsage(cache.data, args);
+        renderUsage(cache.data, args, true);
       } else {
         console.log(`Rate limited (${retryAfter}s)`);
       }
