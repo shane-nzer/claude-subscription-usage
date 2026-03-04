@@ -2,6 +2,25 @@
 
 const { execSync } = require('child_process');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const CACHE_FILE = path.join(os.homedir(), '.claude', '.usage-cache.json');
+
+function readCache() {
+  try {
+    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(cache) {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache));
+  } catch {}
+}
 
 function printHelp() {
   console.log(`
@@ -122,7 +141,8 @@ async function fetchUsage(token) {
         if (res.statusCode === 200) {
           resolve(JSON.parse(data));
         } else {
-          reject(new Error(`HTTP ${res.statusCode}`));
+          const retryAfter = res.headers['retry-after'];
+          reject(new Error(`HTTP ${res.statusCode}${retryAfter ? ` retry-after:${retryAfter}` : ''}`));
         }
       });
     });
@@ -135,6 +155,45 @@ async function fetchUsage(token) {
 
     req.end();
   });
+}
+
+function renderUsage(usage, args) {
+  const modeArg = args.find(arg => arg === '--session' || arg === '--week' || arg === '--both');
+  const mode = modeArg || '--both';
+
+  const textColorArg = args.find(arg => arg.startsWith('--text-color='));
+  const textColorName = textColorArg ? textColorArg.split('=')[1] : 'light-grey';
+  const textColor = TEXT_COLORS[textColorName] || TEXT_COLORS['light-grey'];
+
+  const showBars = !args.includes('--no-bars');
+  const use24Hr = args.includes('--24h');
+
+  const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
+  const sessionReset = formatResetTime(usage.five_hour?.resets_at, use24Hr, false);
+
+  const week = usage.seven_day?.utilization?.toFixed(1) || 'N/A';
+  const weekReset = formatResetTime(usage.seven_day?.resets_at, use24Hr, true);
+
+  if (mode === '--session') {
+    const label = args.find(arg => !arg.startsWith('--')) || 'Session';
+    const sessionColor = getColor(parseFloat(session));
+    const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
+    console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
+  } else if (mode === '--week') {
+    const label = args.find(arg => !arg.startsWith('--')) || 'Week';
+    const weekColor = getColor(parseFloat(week));
+    const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
+    console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+  } else {
+    const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
+    const sessionLabel = nonFlagArgs[0] || 'Session';
+    const weekLabel = nonFlagArgs[1] || 'Week';
+    const sessionColor = getColor(parseFloat(session));
+    const weekColor = getColor(parseFloat(week));
+    const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
+    const weekBar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
+    console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
+  }
 }
 
 async function main() {
@@ -150,66 +209,64 @@ async function main() {
   try {
     const token = await getCredentials(debug);
     if (!token) {
-      console.log('N/A');
+      console.log('Not logged in');
+      return;
+    }
+
+    const cache = readCache();
+
+    // If still within a rate-limit window, serve from cache
+    if (cache?.retryUntil && Date.now() < cache.retryUntil) {
+      if (debug) {
+        const secsLeft = Math.ceil((cache.retryUntil - Date.now()) / 1000);
+        console.error(`\x1b[33mRate limited, serving cached data (${secsLeft}s remaining)\x1b[0m`);
+      }
+      if (cache.data) {
+        if (args.includes('--json')) {
+          console.log(JSON.stringify(cache.data, null, 2));
+        } else {
+          renderUsage(cache.data, args);
+        }
+      } else {
+        const secsLeft = Math.ceil((cache.retryUntil - Date.now()) / 1000);
+        console.log(`Rate limited (${secsLeft}s)`);
+      }
       return;
     }
 
     const usage = await fetchUsage(token);
+    writeCache({ data: usage, ts: Date.now() });
 
     if (args.includes('--json')) {
       console.log(JSON.stringify(usage, null, 2));
       return;
     }
 
-    // Extract mode (--session, --week, or --both)
-    const modeArg = args.find(arg => arg === '--session' || arg === '--week' || arg === '--both');
-    const mode = modeArg || '--both';
-
-    // Extract text color
-    const textColorArg = args.find(arg => arg.startsWith('--text-color='));
-    const textColorName = textColorArg ? textColorArg.split('=')[1] : 'light-grey';
-    const textColor = TEXT_COLORS[textColorName] || TEXT_COLORS['light-grey'];
-
-    // Check for progress bar flag (default: true)
-    const showBars = !args.includes('--no-bars');
-
-    // Check for 24-hour format flag (default: false)
-    const use24Hr = args.includes('--24h');
-
-    const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
-    const sessionReset = formatResetTime(usage.five_hour?.resets_at, use24Hr, false);
-
-    const week = usage.seven_day?.utilization?.toFixed(1) || 'N/A';
-    const weekReset = formatResetTime(usage.seven_day?.resets_at, use24Hr, true);
-
-    if (mode === '--session') {
-      // Get custom label (first non-flag arg)
-      const label = args.find(arg => !arg.startsWith('--')) || 'Session';
-      const sessionColor = getColor(parseFloat(session));
-      const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
-      console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
-    } else if (mode === '--week') {
-      // Get custom label (first non-flag arg)
-      const label = args.find(arg => !arg.startsWith('--')) || 'Week';
-      const weekColor = getColor(parseFloat(week));
-      const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-      console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
-    } else {
-      // Show both - get custom labels from non-flag arguments
-      const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
-      const sessionLabel = nonFlagArgs[0] || 'Session';
-      const weekLabel = nonFlagArgs[1] || 'Week';
-      const sessionColor = getColor(parseFloat(session));
-      const weekColor = getColor(parseFloat(week));
-      const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
-      const weekBar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-      console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
-    }
+    renderUsage(usage, args);
   } catch (error) {
     if (debug) {
       console.error('\x1b[31mError:\x1b[0m', error.message);
     }
-    console.log('N/A');
+
+    if (error.message.startsWith('HTTP 429')) {
+      const match = error.message.match(/retry-after:(\d+)/);
+      const retryAfter = match ? parseInt(match[1]) : 60;
+      const cache = readCache();
+      writeCache({ ...(cache || {}), retryUntil: Date.now() + retryAfter * 1000 });
+      if (cache?.data) {
+        renderUsage(cache.data, args);
+      } else {
+        console.log(`Rate limited (${retryAfter}s)`);
+      }
+    } else if (error.message.startsWith('HTTP 401') || error.message.startsWith('HTTP 403')) {
+      console.log('Auth error');
+    } else if (error.message === 'Timeout') {
+      console.log('Timeout');
+    } else if (error.message.startsWith('HTTP')) {
+      console.log(`API error (${error.message})`);
+    } else {
+      console.log('Unavailable');
+    }
   }
 }
 
