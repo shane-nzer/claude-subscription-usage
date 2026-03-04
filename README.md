@@ -80,13 +80,21 @@ Uses an undocumented Anthropic OAuth API (`https://api.anthropic.com/api/oauth/u
 
 ## Troubleshooting
 
-**"N/A" output:**
+**"Not logged in":**
 - Make sure you're authenticated with Claude Code
 - Check you have an active Pro/Max subscription
 
-**Timeouts:**
+**"Auth error":**
+- Your OAuth token may have expired — try logging out and back in to Claude Code
+
+**"Rate limited (Ns)" or values prefixed with `~`:**
+- Anthropic rate limits the usage API at roughly 5-minute intervals
+- The script will serve cached data automatically and retry after the window expires
+- Values prefixed with `~` indicate cached (potentially stale) data
+
+**"Timeout" / "Unavailable":**
 - Run with `--debug` to see error details
-- API might be experiencing issues
+- The API may be experiencing issues
 
 **Linux/Windows:**
 - Set `CLAUDE_OAUTH_TOKEN` environment variable with your token
