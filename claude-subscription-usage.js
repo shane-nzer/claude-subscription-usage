@@ -251,7 +251,7 @@ async function main() {
 
     if (error.message.startsWith('HTTP 429')) {
       const match = error.message.match(/retry-after:(\d+)/);
-      const retryAfter = match ? parseInt(match[1]) : 60;
+      const retryAfter = Math.max(match ? parseInt(match[1]) : 60, 60);
       const cache = readCache();
       writeCache({ ...(cache || {}), retryUntil: Date.now() + retryAfter * 1000 });
       if (cache?.data) {
