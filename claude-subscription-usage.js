@@ -218,8 +218,21 @@ async function main() {
 
     // If still within a rate-limit window, serve from cache
     if (cache?.retryUntil && Date.now() < cache.retryUntil) {
+      const now = Date.now();
+      const dataExpired = cache.data && (
+        new Date(cache.data.five_hour?.resets_at) < now ||
+        new Date(cache.data.seven_day?.resets_at) < now
+      );
+
+      if (dataExpired) {
+        writeCache({ retryUntil: cache.retryUntil });
+        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
+        console.log(`Rate limited (${secsLeft}s)`);
+        return;
+      }
+
       if (debug) {
-        const secsLeft = Math.ceil((cache.retryUntil - Date.now()) / 1000);
+        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
         console.error(`\x1b[33mRate limited, serving cached data (${secsLeft}s remaining)\x1b[0m`);
       }
       if (cache.data) {
@@ -229,7 +242,7 @@ async function main() {
           renderUsage(cache.data, args, true);
         }
       } else {
-        const secsLeft = Math.ceil((cache.retryUntil - Date.now()) / 1000);
+        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
         console.log(`Rate limited (${secsLeft}s)`);
       }
       return;
