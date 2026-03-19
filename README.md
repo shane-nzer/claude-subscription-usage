@@ -1,6 +1,8 @@
 # Claude Subscription Usage (for Claude Code)
 
-Display your Claude Pro/Max subscription usage in your terminal status line (works great with [ccstatusline](https://github.com/sirmalloc/ccstatusline)) with real-time tracking, progress bars, and color-coded warnings. Designed for Claude Code users.
+> **IMPORTANT:** Requires Claude Code v2.1.80 or later.
+
+Display your Claude Pro/Max subscription usage in your terminal status line with real-time tracking, progress bars, and color-coded warnings. Designed for Claude Code users.
 
 ## Preview
 
@@ -19,7 +21,7 @@ curl -o ~/.local/bin/claude-subscription-usage.js https://raw.githubusercontent.
 chmod +x ~/.local/bin/claude-subscription-usage.js
 ```
 
-**Requirements:** macOS, Node.js, Claude Pro/Max subscription, authenticated with Claude Code CLI
+**Requirements:** Node.js, Claude Code v2.1.80+, Claude Pro/Max subscription
 
 ## Usage
 
@@ -49,17 +51,30 @@ chmod +x ~/.local/bin/claude-subscription-usage.js
 ~/.local/bin/claude-subscription-usage.js --json
 ```
 
-## Integration with [ccstatusline](https://github.com/sirmalloc/ccstatusline)
+## Integration
 
-1. Run `npx ccstatusline@latest` (or `bunx ccstatusline@latest`)
-2. Add a **Custom Command** widget:
-   - Select **Edit Lines** from the main menu
-   - Choose the line you want to add the widget to
-   - Press `a` to append or `i` to insert a new item — this opens the item type picker
-   - Select **Custom** → **Custom Command**
-   - Set **command** to: `~/.local/bin/claude-subscription-usage.js "Current" "Week"`
-   - Set **timeout** to: `5000`
-   - Enable **preserve colors**
+Set `statusLine.command` in `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.local/bin/claude-subscription-usage.js \"Current\" \"Week\""
+  }
+}
+```
+
+Claude Code pipes the statusline JSON directly to the script's stdin on each update.
+
+### Using with ccstatusline (optional)
+
+If you use [ccstatusline](https://github.com/sirmalloc/ccstatusline), you can add this script as a **Custom Command** widget instead — ccstatusline forwards the Claude Code statusline JSON to custom commands via stdin automatically.
+
+1. Run `npx ccstatusline@latest`
+2. Add a **Custom** → **Custom Command** widget
+3. Set **command** to: `~/.local/bin/claude-subscription-usage.js "Current" "Week"`
+4. Set **timeout** to at least `3000`
+5. Enable **preserve colors**
 
 ## Options
 
@@ -71,38 +86,18 @@ chmod +x ~/.local/bin/claude-subscription-usage.js
 | `--24h` | Use 24-hour time format (default: 12-hour) |
 | `--text-color=C` | Text color: `default`, `white`, `light-grey`, `mid-grey` |
 | `--json` | Output raw JSON data |
-| `--debug` | Show verbose error logging |
 | `--help` | Show help message |
 
 ## How It Works
 
-Uses an undocumented Anthropic OAuth API (`https://api.anthropic.com/api/oauth/usage`) to fetch your subscription usage. Retrieves your OAuth token from macOS Keychain automatically.
+Reads `rate_limits.five_hour` and `rate_limits.seven_day` from Claude Code's built-in statusline JSON, which Claude Code pipes to the configured statusline command via stdin on each update. No API calls, credentials, or rate-limit handling needed.
 
 ## Troubleshooting
 
-**"Not logged in":**
-- Make sure you're authenticated with Claude Code
-- Check you have an active Pro/Max subscription
-
-**"Auth error":**
-- Your OAuth token may have expired — try logging out and back in to Claude Code
-
-**"Rate limited (Ns)" or values prefixed with `~`:**
-- Anthropic rate limits the usage API at roughly 5-minute intervals
-- The script will serve cached data automatically and retry after the window expires
-- Values prefixed with `~` indicate cached (potentially stale) data
-
-**"Timeout" / "Unavailable":**
-- Run with `--debug` to see error details
-- The API may be experiencing issues
-
-**Linux/Windows:**
-- Set `CLAUDE_OAUTH_TOKEN` environment variable with your token
+**"No data":**
+- Means the `rate_limits` field was absent from the stdin JSON — likely an older version of Claude Code
+- Upgrade to Claude Code v2.1.80 or later
 
 ## License
 
 MIT - see [LICENSE](LICENSE)
-
-## Disclaimer
-
-Uses an undocumented API endpoint that could change at any time.

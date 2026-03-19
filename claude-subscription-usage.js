@@ -1,27 +1,5 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const CACHE_FILE = path.join(os.homedir(), '.claude', '.usage-cache.json');
-
-function readCache() {
-  try {
-    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(cache) {
-  try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache));
-  } catch {}
-}
-
 function printHelp() {
   console.log(`
 Usage: claude-subscription-usage.js [options] [label1] [label2]
@@ -34,7 +12,6 @@ Options:
   --json          Output raw data in JSON format
   --24h           Use 24-hour time format
   --text-color=C  Set text color (default, white, light-grey, mid-grey)
-  --debug         Enable verbose error logging
   --help, -h      Show this help message
 
 Examples:
@@ -42,30 +19,6 @@ Examples:
   claude-subscription-usage.js --session "Current"
   claude-subscription-usage.js --text-color=white --no-bars
 `);
-}
-
-async function getCredentials(debug = false) {
-  if (process.env.CLAUDE_OAUTH_TOKEN) {
-    if (debug) {
-      console.error('\x1b[32mUsing token from environment variable\x1b[0m');
-    }
-    return process.env.CLAUDE_OAUTH_TOKEN;
-  }
-
-  try {
-    const output = execSync('security find-generic-password -s "Claude Code-credentials" -w', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    const credentials = JSON.parse(output.trim());
-    return credentials.claudeAiOauth?.accessToken;
-  } catch (error) {
-    if (debug) {
-      console.error('\x1b[31mError fetching credentials:\x1b[0m', error.message);
-    }
-    return null;
-  }
 }
 
 function getColor(utilization) {
@@ -117,47 +70,7 @@ function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
   }
 }
 
-async function fetchUsage(token) {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.anthropic.com',
-      path: '/api/oauth/usage',
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'anthropic-beta': 'oauth-2025-04-20',
-        'Content-Type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          resolve(JSON.parse(data));
-        } else {
-          const retryAfter = res.headers['retry-after'];
-          reject(new Error(`HTTP ${res.statusCode}${retryAfter ? ` retry-after:${retryAfter}` : ''}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.setTimeout(10000, () => {
-      req.destroy();
-      reject(new Error('Timeout'));
-    });
-
-    req.end();
-  });
-}
-
-function renderUsage(usage, args, cached = false) {
+function renderUsage(rateLimits, args) {
   const modeArg = args.find(arg => arg === '--session' || arg === '--week' || arg === '--both');
   const mode = modeArg || '--both';
 
@@ -167,24 +80,23 @@ function renderUsage(usage, args, cached = false) {
 
   const showBars = !args.includes('--no-bars');
   const use24Hr = args.includes('--24h');
-  const stale = cached ? '~' : '';
 
-  const session = usage.five_hour?.utilization?.toFixed(1) || 'N/A';
-  const sessionReset = formatResetTime(usage.five_hour?.resets_at, use24Hr, false);
+  const session = rateLimits.five_hour?.used_percentage?.toFixed(1) || 'N/A';
+  const sessionReset = formatResetTime(rateLimits.five_hour?.resets_at * 1000, use24Hr, false);
 
-  const week = usage.seven_day?.utilization?.toFixed(1) || 'N/A';
-  const weekReset = formatResetTime(usage.seven_day?.resets_at, use24Hr, true);
+  const week = rateLimits.seven_day?.used_percentage?.toFixed(1) || 'N/A';
+  const weekReset = formatResetTime(rateLimits.seven_day?.resets_at * 1000, use24Hr, true);
 
   if (mode === '--session') {
     const label = args.find(arg => !arg.startsWith('--')) || 'Session';
     const sessionColor = getColor(parseFloat(session));
     const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
-    console.log(`${textColor}${label}: ${bar}${sessionColor}${stale}${session}%${textColor} (${sessionReset})${RESET}`);
+    console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
   } else if (mode === '--week') {
     const label = args.find(arg => !arg.startsWith('--')) || 'Week';
     const weekColor = getColor(parseFloat(week));
     const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-    console.log(`${textColor}${label}: ${bar}${weekColor}${stale}${week}%${textColor} (${weekReset})${RESET}`);
+    console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
   } else {
     const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
     const sessionLabel = nonFlagArgs[0] || 'Session';
@@ -193,8 +105,18 @@ function renderUsage(usage, args, cached = false) {
     const weekColor = getColor(parseFloat(week));
     const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
     const weekBar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
-    console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${stale}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${stale}${week}%${textColor} (${weekReset})${RESET}`);
+    console.log(`${textColor}${sessionLabel}: ${sessionBar}${sessionColor}${session}%${textColor} (${sessionReset}) | ${weekLabel}: ${weekBar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
   }
+}
+
+function readStdin() {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => { data += chunk; });
+    process.stdin.on('end', () => resolve(data));
+    process.stdin.on('error', () => resolve(''));
+  });
 }
 
 async function main() {
@@ -205,83 +127,16 @@ async function main() {
     return;
   }
 
-  const debug = args.includes('--debug');
+  const raw = await readStdin();
+  let statusData;
+  try { statusData = JSON.parse(raw); } catch { console.log('No data'); return; }
 
-  try {
-    const token = await getCredentials(debug);
-    if (!token) {
-      console.log('Not logged in');
-      return;
-    }
+  const rateLimits = statusData.rate_limits;
+  if (!rateLimits) { console.log('No data'); return; }
 
-    const cache = readCache();
+  if (args.includes('--json')) { console.log(JSON.stringify(rateLimits, null, 2)); return; }
 
-    // If still within a rate-limit window, serve from cache
-    if (cache?.retryUntil && Date.now() < cache.retryUntil) {
-      const now = Date.now();
-      const dataExpired = cache.data && (
-        new Date(cache.data.five_hour?.resets_at) < now ||
-        new Date(cache.data.seven_day?.resets_at) < now
-      );
-
-      if (dataExpired) {
-        writeCache({ retryUntil: cache.retryUntil });
-        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
-        console.log(`Rate limited (${secsLeft}s)`);
-        return;
-      }
-
-      if (debug) {
-        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
-        console.error(`\x1b[33mRate limited, serving cached data (${secsLeft}s remaining)\x1b[0m`);
-      }
-      if (cache.data) {
-        if (args.includes('--json')) {
-          console.log(JSON.stringify(cache.data, null, 2));
-        } else {
-          renderUsage(cache.data, args, true);
-        }
-      } else {
-        const secsLeft = Math.ceil((cache.retryUntil - now) / 1000);
-        console.log(`Rate limited (${secsLeft}s)`);
-      }
-      return;
-    }
-
-    const usage = await fetchUsage(token);
-    writeCache({ data: usage, ts: Date.now() });
-
-    if (args.includes('--json')) {
-      console.log(JSON.stringify(usage, null, 2));
-      return;
-    }
-
-    renderUsage(usage, args);
-  } catch (error) {
-    if (debug) {
-      console.error('\x1b[31mError:\x1b[0m', error.message);
-    }
-
-    if (error.message.startsWith('HTTP 429')) {
-      const match = error.message.match(/retry-after:(\d+)/);
-      const retryAfter = Math.max(match ? parseInt(match[1]) : 60, 60);
-      const cache = readCache();
-      writeCache({ ...(cache || {}), retryUntil: Date.now() + retryAfter * 1000 });
-      if (cache?.data) {
-        renderUsage(cache.data, args, true);
-      } else {
-        console.log(`Rate limited (${retryAfter}s)`);
-      }
-    } else if (error.message.startsWith('HTTP 401') || error.message.startsWith('HTTP 403')) {
-      console.log('Auth error');
-    } else if (error.message === 'Timeout') {
-      console.log('Timeout');
-    } else if (error.message.startsWith('HTTP')) {
-      console.log(`API error (${error.message})`);
-    } else {
-      console.log('Unavailable');
-    }
-  }
+  renderUsage(rateLimits, args);
 }
 
 main();
