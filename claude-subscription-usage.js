@@ -44,7 +44,7 @@ function createProgressBar(utilization, barLength = 10) {
   const remainder = totalEighths % 8;
   const partial = remainder > 0 ? eighths[remainder] : '';
   const empty = barLength - fullBlocks - (partial ? 1 : 0);
-  return '|' + '█'.repeat(fullBlocks) + partial + ' '.repeat(empty) + '|';
+  return '█'.repeat(fullBlocks) + partial + '░'.repeat(empty);
 }
 
 function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
@@ -59,14 +59,15 @@ function formatResetTime(resetTime, use24Hr = false, includeDay = false) {
   const dayStr = includeDay ? `${days[reset.getDay()]} ` : '';
 
   let hours = reset.getHours();
-  const minutes = reset.getMinutes().toString().padStart(2, '0');
+  const minutes = reset.getMinutes();
 
   if (use24Hr) {
-    return `${dayStr}${hours.toString().padStart(2, '0')}:${minutes}`;
+    return `${dayStr}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   } else {
     const period = hours >= 12 ? 'pm' : 'am';
     hours = hours % 12 || 12;
-    return `${dayStr}${hours}:${minutes}${period}`;
+    const mStr = minutes > 0 ? `:${minutes.toString().padStart(2, '0')}` : '';
+    return `${dayStr}${hours}${mStr}${period}`;
   }
 }
 
@@ -81,26 +82,26 @@ function renderUsage(rateLimits, args) {
   const showBars = !args.includes('--no-bars');
   const use24Hr = args.includes('--24h');
 
-  const session = rateLimits.five_hour?.used_percentage?.toFixed(1) || 'N/A';
+  const session = rateLimits.five_hour?.used_percentage != null ? Math.round(rateLimits.five_hour.used_percentage) : 'N/A';
   const sessionReset = formatResetTime(rateLimits.five_hour?.resets_at * 1000, use24Hr, false);
 
-  const week = rateLimits.seven_day?.used_percentage?.toFixed(1) || 'N/A';
+  const week = rateLimits.seven_day?.used_percentage != null ? Math.round(rateLimits.seven_day.used_percentage) : 'N/A';
   const weekReset = formatResetTime(rateLimits.seven_day?.resets_at * 1000, use24Hr, true);
 
   if (mode === '--session') {
-    const label = args.find(arg => !arg.startsWith('--')) || 'Session';
+    const label = args.find(arg => !arg.startsWith('--')) || '5hr';
     const sessionColor = getColor(parseFloat(session));
     const bar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
     console.log(`${textColor}${label}: ${bar}${sessionColor}${session}%${textColor} (${sessionReset})${RESET}`);
   } else if (mode === '--week') {
-    const label = args.find(arg => !arg.startsWith('--')) || 'Week';
+    const label = args.find(arg => !arg.startsWith('--')) || 'Wk';
     const weekColor = getColor(parseFloat(week));
     const bar = showBars ? `${weekColor}${createProgressBar(parseFloat(week))}${textColor} ` : '';
     console.log(`${textColor}${label}: ${bar}${weekColor}${week}%${textColor} (${weekReset})${RESET}`);
   } else {
     const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
-    const sessionLabel = nonFlagArgs[0] || 'Session';
-    const weekLabel = nonFlagArgs[1] || 'Week';
+    const sessionLabel = nonFlagArgs[0] || '5hr';
+    const weekLabel = nonFlagArgs[1] || 'Wk';
     const sessionColor = getColor(parseFloat(session));
     const weekColor = getColor(parseFloat(week));
     const sessionBar = showBars ? `${sessionColor}${createProgressBar(parseFloat(session))}${textColor} ` : '';
